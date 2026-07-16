@@ -173,6 +173,31 @@
       margin-top: 5px;
     }
 
+    select {
+      width: 100%;
+      padding: 15px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 11px;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      color: var(--text);
+      background: var(--cream);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b6860' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    select:focus {
+      border-color: var(--it-green);
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(0,122,56,0.1);
+    }
+    select.err { border-color: var(--shared-red); }
+
     .submit-btn {
       width: 100%;
       padding: 17px;
@@ -522,6 +547,34 @@
       <input type="email" id="email" placeholder="e.g. amara@email.com" autocomplete="email" inputmode="email"/>
       <div class="err-msg" id="emailErr">Please enter a valid email.</div>
     </div>
+    <div class="form-group">
+      <label for="city">City You're Coming From</label>
+      <select id="city">
+        <option value="">— Select your city —</option>
+        <option>Milano</option>
+        <option>Roma</option>
+        <option>Torino</option>
+        <option>Napoli</option>
+        <option>Bologna</option>
+        <option>Firenze</option>
+        <option>Venezia</option>
+        <option>Genova</option>
+        <option>Palermo</option>
+        <option>Bari</option>
+        <option>Catania</option>
+        <option>Verona</option>
+        <option>Brescia</option>
+        <option>Bergamo</option>
+        <option>Padova</option>
+        <option>Trieste</option>
+        <option>Parma</option>
+        <option>Modena</option>
+        <option>Reggio Calabria</option>
+        <option>Perugia</option>
+        <option>Altra città / Other city</option>
+      </select>
+      <div class="err-msg" id="cityErr">Please select your city.</div>
+    </div>
     <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Register Now 🇺🇬🇮🇹</button>
     <div class="success-banner" id="successBanner">
       ✅ Registered! See you at Parco Aldo Aniasi on 18th July!
@@ -649,18 +702,20 @@
   }
 
   function handleSubmit() {
-    const nameEl = document.getElementById('fullName');
+    const nameEl  = document.getElementById('fullName');
     const phoneEl = document.getElementById('phone');
     const emailEl = document.getElementById('email');
+    const cityEl  = document.getElementById('city');
     const btn = document.getElementById('submitBtn');
 
-    ['nameErr','phoneErr','emailErr'].forEach(id => document.getElementById(id).style.display = 'none');
-    [nameEl, phoneEl, emailEl].forEach(el => el.classList.remove('err'));
+    ['nameErr','phoneErr','emailErr','cityErr'].forEach(id => document.getElementById(id).style.display = 'none');
+    [nameEl, phoneEl, emailEl, cityEl].forEach(el => el.classList.remove('err'));
     document.getElementById('successBanner').style.display = 'none';
 
     const name  = nameEl.value.trim();
     const phone = phoneEl.value.trim();
     const email = emailEl.value.trim();
+    const city  = cityEl.value;
     let ok = true;
 
     if (name.length < 2) {
@@ -675,13 +730,17 @@
       document.getElementById('emailErr').style.display = 'block';
       emailEl.classList.add('err'); if (ok) { emailEl.focus(); ok = false; }
     }
+    if (!city) {
+      document.getElementById('cityErr').style.display = 'block';
+      cityEl.classList.add('err'); if (ok) { cityEl.focus(); ok = false; }
+    }
     if (!ok) return;
 
     btn.disabled = true;
     btn.textContent = 'Saving...';
 
     const regs = getRegs();
-    regs.push({ no: regs.length + 1, name, phone, email, time: new Date().toLocaleString('en-GB') });
+    regs.push({ no: regs.length + 1, name, phone, email, city, time: new Date().toLocaleString('en-GB') });
     saveRegs(regs);
 
     nameEl.value = ''; phoneEl.value = ''; emailEl.value = '';
@@ -704,12 +763,12 @@
     const regs = getRegs();
     if (!regs.length) { alert('No registrations yet.'); return; }
 
-    const rows = [['#', 'Full Name', 'Phone', 'Email', 'Time Registered']];
-    regs.forEach(r => rows.push([r.no, r.name, r.phone, r.email, r.time]));
+    const rows = [['#', 'Full Name', 'Phone', 'Email', 'City', 'Time Registered']];
+    regs.forEach(r => rows.push([r.no, r.name, r.phone, r.email, r.city || '', r.time]));
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:4},{wch:28},{wch:20},{wch:32},{wch:22}];
+    ws['!cols'] = [{wch:4},{wch:28},{wch:20},{wch:32},{wch:18},{wch:22}];
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
     XLSX.writeFile(wb, 'UgandaSportsDay2026_Attendance.xlsx');
   }
