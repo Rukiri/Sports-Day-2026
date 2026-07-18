@@ -686,29 +686,49 @@
   Saturday 18th July 2026 · Everyone Welcome
 </footer>
 
-<script>
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, addDoc, onSnapshot, getDocs, query, orderBy, serverTimestamp }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ── PASTE YOUR FIREBASE CONFIG HERE ──────────────────────────────────────
+  // Go to: https://console.firebase.google.com
+  // Create project → Add web app → copy the firebaseConfig object below
+  const firebaseConfig = {
+    apiKey:            "PASTE_YOUR_apiKey_HERE",
+    authDomain:        "PASTE_YOUR_authDomain_HERE",
+    projectId:         "PASTE_YOUR_projectId_HERE",
+    storageBucket:     "PASTE_YOUR_storageBucket_HERE",
+    messagingSenderId: "PASTE_YOUR_messagingSenderId_HERE",
+    appId:             "PASTE_YOUR_appId_HERE"
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const ADMIN_PASS = 'UgandaSportsDay2026!';
-  const KEY = 'ugItaly2026_v3';
 
-  function getRegs() {
-    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
-  }
-  function saveRegs(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const col = collection(db, 'registrations');
 
-  function updateCounter() {
-    const n = getRegs().length;
+  // ── LIVE COUNTER — updates for ALL visitors in real time ──
+  onSnapshot(col, snap => {
+    const n = snap.size;
     document.getElementById('regCount').textContent = n;
-    document.getElementById('adminCount').textContent = n + ' registration' + (n !== 1 ? 's' : '') + ' stored on this device';
-  }
+    document.getElementById('adminCount').textContent =
+      n + ' registration' + (n !== 1 ? 's' : '') + ' in database';
+  });
 
-  function handleSubmit() {
+  // ── FORM SUBMIT ──
+  window.handleSubmit = async function () {
     const nameEl  = document.getElementById('fullName');
     const phoneEl = document.getElementById('phone');
     const emailEl = document.getElementById('email');
     const cityEl  = document.getElementById('city');
-    const btn = document.getElementById('submitBtn');
+    const btn     = document.getElementById('submitBtn');
 
-    ['nameErr','phoneErr','emailErr','cityErr'].forEach(id => document.getElementById(id).style.display = 'none');
+    ['nameErr','phoneErr','emailErr','cityErr'].forEach(id =>
+      document.getElementById(id).style.display = 'none');
     [nameEl, phoneEl, emailEl, cityEl].forEach(el => el.classList.remove('err'));
     document.getElementById('successBanner').style.display = 'none';
 
@@ -739,46 +759,63 @@
     btn.disabled = true;
     btn.textContent = 'Saving...';
 
-    const regs = getRegs();
-    regs.push({ no: regs.length + 1, name, phone, email, city, time: new Date().toLocaleString('en-GB') });
-    saveRegs(regs);
+    try {
+      await addDoc(col, {
+        name, phone, email, city,
+        time: new Date().toLocaleString('en-GB'),
+        timestamp: serverTimestamp()
+      });
 
-    nameEl.value = ''; phoneEl.value = ''; emailEl.value = '';
-    document.getElementById('successBanner').style.display = 'block';
-    updateCounter();
+      nameEl.value = ''; phoneEl.value = ''; emailEl.value = '';
+      cityEl.value = '';
+      document.getElementById('successBanner').style.display = 'block';
 
-    setTimeout(() => {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Register Now 🇺🇬🇮🇹';
+        document.getElementById('successBanner').style.display = 'none';
+      }, 4000);
+
+    } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Register Now 🇺🇬🇮🇹';
-      document.getElementById('successBanner').style.display = 'none';
-    }, 4000);
-  }
+      alert('Something went wrong. Please try again.');
+      console.error(e);
+    }
+  };
 
-  function handleDownload() {
-    const pass = document.getElementById('adminPass').value;
+  // ── ADMIN DOWNLOAD ──
+  window.handleDownload = async function () {
+    const pass  = document.getElementById('adminPass').value;
     const errEl = document.getElementById('adminErr');
     errEl.style.display = 'none';
     if (pass !== ADMIN_PASS) { errEl.style.display = 'block'; return; }
 
-    const regs = getRegs();
-    if (!regs.length) { alert('No registrations yet.'); return; }
+    const snap = await getDocs(query(col, orderBy('timestamp')));
+    if (snap.empty) { alert('No registrations yet.'); return; }
 
     const rows = [['#', 'Full Name', 'Phone', 'Email', 'City', 'Time Registered']];
-    regs.forEach(r => rows.push([r.no, r.name, r.phone, r.email, r.city || '', r.time]));
+    snap.docs.forEach((doc, i) => {
+      const r = doc.data();
+      rows.push([i + 1, r.name, r.phone, r.email, r.city || '', r.time]);
+    });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{wch:4},{wch:28},{wch:20},{wch:32},{wch:18},{wch:22}];
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
     XLSX.writeFile(wb, 'UgandaSportsDay2026_Attendance.xlsx');
-  }
+  };
 
-  document.getElementById('adminPass').addEventListener('keydown', e => { if (e.key === 'Enter') handleDownload(); });
-  ['fullName','phone','email'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
+  // Enter key support
+  document.getElementById('adminPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.handleDownload();
   });
-
-  updateCounter();
+  ['fullName','phone','email'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') window.handleSubmit();
+    });
+  });
 </script>
 </body>
 </html>
